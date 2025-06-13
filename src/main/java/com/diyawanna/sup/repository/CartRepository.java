@@ -95,7 +95,7 @@ public interface CartRepository extends MongoRepository<Cart, String> {
     /**
      * Find user's active cart (status = ACTIVE)
      */
-    Optional<Cart> findByUserIdAndStatusAndActiveTrue(String userId, String status);
+//    Optional<Cart> findByUserIdAndStatusAndActiveTrue(String userId, String status); //// Duplicate Method in CartRepository
 
     /**
      * Count active carts

@@ -613,7 +613,7 @@ Execute a dynamic query.
 {
   "success": true,
   "message": "Query executed successfully",
-  "data": [...],
+  "data": ["..."],
   "queryName": "user.findByUniversity",
   "executionTime": "2024-01-15T10:30:00",
   "resultCount": 25

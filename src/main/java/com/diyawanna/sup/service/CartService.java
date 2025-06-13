@@ -145,7 +145,9 @@ public class CartService {
     }
 
     public Optional<Cart> getUserActiveCart(String userId) {
-        return cartRepository.findByUserIdAndStatusAndActiveTrue(userId, "ACTIVE");
+//        return cartRepository.findByUserIdAndStatusAndActiveTrue(userId, "ACTIVE");   //// Type Mismatch in CartService
+        List<Cart> carts = cartRepository.findByUserIdAndActiveTrue(userId);
+        return carts.stream().findFirst();
     }
 }
 

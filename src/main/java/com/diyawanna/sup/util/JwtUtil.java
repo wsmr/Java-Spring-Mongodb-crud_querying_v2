@@ -73,11 +73,11 @@ public class JwtUtil {
      */
     private Claims extractAllClaims(String token) {
         try {
-            return Jwts.parser()
-                    .verifyWith(getSigningKey())
+            return Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
                     .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
+                    .parseClaimsJws(token)
+                    .getBody();
         } catch (JwtException e) {
             throw new RuntimeException("Invalid JWT token", e);
         }
@@ -114,11 +114,11 @@ public class JwtUtil {
         Date expiryDate = new Date(now.getTime() + expiration);
 
         return Jwts.builder()
-                .claims(claims)
-                .subject(subject)
-                .issuedAt(now)
-                .expiration(expiryDate)
-                .signWith(getSigningKey())
+                .setClaims(claims)
+                .setSubject(subject)
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
@@ -166,13 +166,27 @@ public class JwtUtil {
     public String refreshToken(String token) {
         try {
             final Claims claims = extractAllClaims(token);
-            claims.setIssuedAt(new Date());
-            claims.setExpiration(new Date(System.currentTimeMillis() + expiration));
-            
+//            claims.setIssuedAt(new Date());
+//            claims.setExpiration(new Date(System.currentTimeMillis() + expiration)); //// The setIssuedAt() and setExpiration() methods don't exist in the JWT library
+
+            // If you're trying to modify existing claims
+//            ---> Claims newClaims = Jwts.claims(claims);
+            // Add your custom claims here
+            // Then build the token with the claims
+
+//            return Jwts.builder()
+//                    .claims(claims)
+//                    .signWith(getSigningKey())
+//                    .compact();
+
+            //// For newer versions of jjwt (0.11.x+)
             return Jwts.builder()
-                    .claims(claims)
-                    .signWith(getSigningKey())
+                    .setClaims(claims)
+                    .setIssuedAt(new Date())
+                    .setExpiration(new Date(System.currentTimeMillis() + expiration))
+                    .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                     .compact();
+
         } catch (Exception e) {
             throw new RuntimeException("Cannot refresh token", e);
         }

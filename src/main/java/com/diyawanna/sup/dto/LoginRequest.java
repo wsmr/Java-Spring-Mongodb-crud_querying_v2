@@ -1,6 +1,6 @@
 package com.diyawanna.sup.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import javax.validation.constraints.NotBlank;
 
 /**
  * Login request DTO for authentication

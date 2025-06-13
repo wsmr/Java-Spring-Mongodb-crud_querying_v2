@@ -7,7 +7,6 @@ import org.springframework.data.mongodb.config.AbstractMongoClientConfiguration;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.core.index.IndexOperations;
-import org.springframework.data.mongodb.core.index.IndexDefinition;
 import org.springframework.data.mongodb.core.index.Index;
 
 import com.mongodb.client.MongoClient;
@@ -21,7 +20,7 @@ import com.diyawanna.sup.entity.Faculty;
 import com.diyawanna.sup.entity.Cart;
 import com.diyawanna.sup.entity.Query;
 
-import jakarta.annotation.PostConstruct;
+import javax.annotation.PostConstruct;
 
 import java.util.concurrent.TimeUnit;
 
@@ -93,6 +92,7 @@ public class MongoConfig extends AbstractMongoClientConfiguration {
 
     /**
      * Create database indexes for performance optimization
+     * Updated to use createIndex instead of deprecated ensureIndex
      */
     @PostConstruct
     public void createIndexes() {
