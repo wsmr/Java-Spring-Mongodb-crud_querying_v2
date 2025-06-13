@@ -1,0 +1,220 @@
+{
+  "messages": {
+    "success": {
+      "user_created": "User created successfully",
+      "user_updated": "User updated successfully",
+      "user_deleted": "User deleted successfully",
+      "university_created": "University created successfully",
+      "university_updated": "University updated successfully",
+      "university_deleted": "University deleted successfully",
+      "faculty_created": "Faculty created successfully",
+      "faculty_updated": "Faculty updated successfully",
+      "faculty_deleted": "Faculty deleted successfully",
+      "cart_created": "Cart created successfully",
+      "cart_updated": "Cart updated successfully",
+      "cart_deleted": "Cart deleted successfully",
+      "query_executed": "Query executed successfully",
+      "data_retrieved": "Data retrieved successfully",
+      "operation_completed": "Operation completed successfully"
+    },
+    "error": {
+      "user_not_found": "User not found",
+      "university_not_found": "University not found",
+      "faculty_not_found": "Faculty not found",
+      "cart_not_found": "Cart not found",
+      "query_not_found": "Query not found",
+      "invalid_parameters": "Invalid parameters provided",
+      "execution_failed": "Query execution failed",
+      "database_error": "Database operation failed",
+      "authentication_required": "Authentication required",
+      "access_denied": "Access denied",
+      "validation_failed": "Validation failed"
+    }
+  },
+  "queryMappings": {
+    "user": {
+      "findAll": {
+        "query": "{'active': true}",
+        "collection": "user",
+        "type": "FIND",
+        "description": "Find all active users"
+      },
+      "findById": {
+        "query": "{'_id': ObjectId('${id}'), 'active': true}",
+        "collection": "user",
+        "type": "FIND",
+        "description": "Find user by ID",
+        "parameters": ["id"]
+      },
+      "findByUsername": {
+        "query": "{'username': '${username}', 'active': true}",
+        "collection": "user",
+        "type": "FIND",
+        "description": "Find user by username",
+        "parameters": ["username"]
+      },
+      "findByUniversity": {
+        "query": "{'university': '${university}', 'active': true}",
+        "collection": "user",
+        "type": "FIND",
+        "description": "Find users by university",
+        "parameters": ["university"]
+      },
+      "countByAge": {
+        "query": "[{'$match': {'age': {'$gte': ${minAge}, '$lte': ${maxAge}}, 'active': true}}, {'$count': 'total'}]",
+        "collection": "user",
+        "type": "AGGREGATE",
+        "description": "Count users by age range",
+        "parameters": ["minAge", "maxAge"]
+      }
+    },
+    "university": {
+      "findAll": {
+        "query": "{'active': true}",
+        "collection": "university",
+        "type": "FIND",
+        "description": "Find all active universities"
+      },
+      "findById": {
+        "query": "{'_id': ObjectId('${id}'), 'active': true}",
+        "collection": "university",
+        "type": "FIND",
+        "description": "Find university by ID",
+        "parameters": ["id"]
+      },
+      "findByLocation": {
+        "query": "{'location': {'$regex': '${location}', '$options': 'i'}, 'active': true}",
+        "collection": "university",
+        "type": "FIND",
+        "description": "Find universities by location",
+        "parameters": ["location"]
+      },
+      "findWithFaculties": {
+        "query": "[{'$match': {'active': true}}, {'$lookup': {'from': 'faculty', 'localField': 'faculties', 'foreignField': '_id', 'as': 'facultyDetails'}}]",
+        "collection": "university",
+        "type": "AGGREGATE",
+        "description": "Find universities with faculty details"
+      }
+    },
+    "faculty": {
+      "findAll": {
+        "query": "{'active': true}",
+        "collection": "faculty",
+        "type": "FIND",
+        "description": "Find all active faculties"
+      },
+      "findByUniversity": {
+        "query": "{'universityId': '${universityId}', 'active': true}",
+        "collection": "faculty",
+        "type": "FIND",
+        "description": "Find faculties by university",
+        "parameters": ["universityId"]
+      },
+      "findBySubject": {
+        "query": "{'subjects': {'$in': ['${subject}']}, 'active': true}",
+        "collection": "faculty",
+        "type": "FIND",
+        "description": "Find faculties by subject",
+        "parameters": ["subject"]
+      }
+    },
+    "cart": {
+      "findAll": {
+        "query": "{'active': true}",
+        "collection": "cart",
+        "type": "FIND",
+        "description": "Find all active carts"
+      },
+      "findByUser": {
+        "query": "{'userId': '${userId}', 'active': true}",
+        "collection": "cart",
+        "type": "FIND",
+        "description": "Find carts by user",
+        "parameters": ["userId"]
+      },
+      "findByStatus": {
+        "query": "{'status': '${status}', 'active': true}",
+        "collection": "cart",
+        "type": "FIND",
+        "description": "Find carts by status",
+        "parameters": ["status"]
+      },
+      "calculateTotal": {
+        "query": "[{'$match': {'userId': '${userId}', 'active': true}}, {'$group': {'_id': '$userId', 'totalAmount': {'$sum': '$totalAmount'}}}]",
+        "collection": "cart",
+        "type": "AGGREGATE",
+        "description": "Calculate total amount for user carts",
+        "parameters": ["userId"]
+      }
+    },
+    "analytics": {
+      "userStats": {
+        "query": "[{'$match': {'active': true}}, {'$group': {'_id': '$university', 'count': {'$sum': 1}}}, {'$sort': {'count': -1}}]",
+        "collection": "user",
+        "type": "AGGREGATE",
+        "description": "Get user statistics by university"
+      },
+      "cartStats": {
+        "query": "[{'$match': {'active': true}}, {'$group': {'_id': '$status', 'count': {'$sum': 1}, 'totalAmount': {'$sum': '$totalAmount'}}}]",
+        "collection": "cart",
+        "type": "AGGREGATE",
+        "description": "Get cart statistics by status"
+      },
+      "facultyStats": {
+        "query": "[{'$match': {'active': true}}, {'$unwind': '$subjects'}, {'$group': {'_id': '$subjects', 'count': {'$sum': 1}}}, {'$sort': {'count': -1}}]",
+        "collection": "faculty",
+        "type": "AGGREGATE",
+        "description": "Get faculty statistics by subject"
+      }
+    }
+  },
+  "variableMappings": {
+    "id": "String",
+    "username": "String",
+    "university": "String",
+    "minAge": "Integer",
+    "maxAge": "Integer",
+    "location": "String",
+    "universityId": "String",
+    "subject": "String",
+    "userId": "String",
+    "status": "String"
+  },
+  "sampleQueries": {
+    "findUsersByAge": {
+      "description": "Find users within age range",
+      "endpoint": "/api/dynamic-query/execute",
+      "method": "POST",
+      "body": {
+        "queryName": "user.countByAge",
+        "parameters": {
+          "minAge": 18,
+          "maxAge": 30
+        }
+      }
+    },
+    "findUniversitiesByLocation": {
+      "description": "Find universities in specific location",
+      "endpoint": "/api/dynamic-query/execute",
+      "method": "POST",
+      "body": {
+        "queryName": "university.findByLocation",
+        "parameters": {
+          "location": "Colombo"
+        }
+      }
+    },
+    "getUserCartTotal": {
+      "description": "Calculate total amount for user carts",
+      "endpoint": "/api/dynamic-query/execute",
+      "method": "POST",
+      "body": {
+        "queryName": "cart.calculateTotal",
+        "parameters": {
+          "userId": "user123"
+        }
+      }
+    }
+  }
+}
+
