@@ -10,6 +10,7 @@ import com.diyawanna.sup.exception.AuthenticationException;
 import com.diyawanna.sup.exception.UserAlreadyExistsException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -20,15 +21,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-
-import com.diyawanna.sup.repository.UserRepository;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-
-import javax.servlet.http.HttpServletRequest;
 
 /**
  * Authentication service for user login, registration, and JWT token management
@@ -48,14 +40,9 @@ public class AuthenticationService implements UserDetailsService {
     @Autowired
     private UserRepository userRepository;
 
-//    @Autowired
-//    private PasswordEncoder passwordEncoder;
-    // In AuthenticationService.java
-    private final PasswordEncoder passwordEncoder;
-
-    public AuthenticationService(PasswordEncoder passwordEncoder) {
-        this.passwordEncoder = passwordEncoder;
-    }
+    @Autowired
+    @Lazy
+    private PasswordEncoder passwordEncoder;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -309,38 +296,3 @@ public class AuthenticationService implements UserDetailsService {
     }
 }
 
-//public class AuthenticationService {
-//
-//    private final UserRepository userRepository;
-//    private final UserDetailsService userDetailsService;
-//    private final PasswordEncoder passwordEncoder;
-//
-//    public AuthenticationService(UserRepository userRepository,
-//                                 UserDetailsService userDetailsService,
-//                                 PasswordEncoder passwordEncoder) {
-//        this.userRepository = userRepository;
-//        this.userDetailsService = userDetailsService;
-//        this.passwordEncoder = passwordEncoder;
-//    }
-//
-//    public String resolveToken(HttpServletRequest request) {
-//        // Example: extract token from Authorization header
-//        String bearerToken = request.getHeader("Authorization");
-//        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-//            return bearerToken.substring(7);
-//        }
-//        return null;
-//    }
-//
-//    public boolean validateToken(String token) {
-//        // Implement your JWT validation logic here
-//        return true;
-//    }
-//
-//    public Authentication getAuthentication(String token) {
-//        // Implement your logic to get Authentication from token
-//        // Example:
-//        var userDetails = userDetailsService.loadUserByUsername("username-from-token");
-//        return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-//    }
-//}
