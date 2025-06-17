@@ -21,6 +21,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import com.diyawanna.sup.repository.UserRepository;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import javax.servlet.http.HttpServletRequest;
+
 /**
  * Authentication service for user login, registration, and JWT token management
  * 
@@ -39,8 +48,14 @@ public class AuthenticationService implements UserDetailsService {
     @Autowired
     private UserRepository userRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+//    @Autowired
+//    private PasswordEncoder passwordEncoder;
+    // In AuthenticationService.java
+    private final PasswordEncoder passwordEncoder;
+
+    public AuthenticationService(PasswordEncoder passwordEncoder) {
+        this.passwordEncoder = passwordEncoder;
+    }
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -52,7 +67,7 @@ public class AuthenticationService implements UserDetailsService {
         try {
             // Find user by username
             Optional<User> userOptional = userRepository.findByUsername(loginRequest.getUsername());
-            
+
             if (userOptional.isEmpty()) {
                 throw new AuthenticationException("Invalid username or password");
             }
@@ -114,7 +129,7 @@ public class AuthenticationService implements UserDetailsService {
             }
 
             // Check if email already exists
-            if (registerRequest.getEmail() != null && 
+            if (registerRequest.getEmail() != null &&
                 userRepository.existsByEmail(registerRequest.getEmail())) {
                 throw new UserAlreadyExistsException("Email already exists");
             }
@@ -222,13 +237,13 @@ public class AuthenticationService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         Optional<User> userOptional = userRepository.findByUsername(username);
-        
+
         if (userOptional.isEmpty()) {
             throw new UsernameNotFoundException("User not found: " + username);
         }
 
         User user = userOptional.get();
-        
+
         if (!user.isActive()) {
             throw new UsernameNotFoundException("User account is deactivated: " + username);
         }
@@ -246,7 +261,7 @@ public class AuthenticationService implements UserDetailsService {
     public void changePassword(String username, String oldPassword, String newPassword) {
         try {
             Optional<User> userOptional = userRepository.findByUsername(username);
-            
+
             if (userOptional.isEmpty()) {
                 throw new AuthenticationException("User not found");
             }
@@ -272,7 +287,7 @@ public class AuthenticationService implements UserDetailsService {
      */
     public void deactivateUser(String username) {
         Optional<User> userOptional = userRepository.findByUsername(username);
-        
+
         if (userOptional.isPresent()) {
             User user = userOptional.get();
             user.setActive(false);
@@ -285,7 +300,7 @@ public class AuthenticationService implements UserDetailsService {
      */
     public void activateUser(String username) {
         Optional<User> userOptional = userRepository.findByUsername(username);
-        
+
         if (userOptional.isPresent()) {
             User user = userOptional.get();
             user.setActive(true);
@@ -294,3 +309,38 @@ public class AuthenticationService implements UserDetailsService {
     }
 }
 
+//public class AuthenticationService {
+//
+//    private final UserRepository userRepository;
+//    private final UserDetailsService userDetailsService;
+//    private final PasswordEncoder passwordEncoder;
+//
+//    public AuthenticationService(UserRepository userRepository,
+//                                 UserDetailsService userDetailsService,
+//                                 PasswordEncoder passwordEncoder) {
+//        this.userRepository = userRepository;
+//        this.userDetailsService = userDetailsService;
+//        this.passwordEncoder = passwordEncoder;
+//    }
+//
+//    public String resolveToken(HttpServletRequest request) {
+//        // Example: extract token from Authorization header
+//        String bearerToken = request.getHeader("Authorization");
+//        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+//            return bearerToken.substring(7);
+//        }
+//        return null;
+//    }
+//
+//    public boolean validateToken(String token) {
+//        // Implement your JWT validation logic here
+//        return true;
+//    }
+//
+//    public Authentication getAuthentication(String token) {
+//        // Implement your logic to get Authentication from token
+//        // Example:
+//        var userDetails = userDetailsService.loadUserByUsername("username-from-token");
+//        return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+//    }
+//}

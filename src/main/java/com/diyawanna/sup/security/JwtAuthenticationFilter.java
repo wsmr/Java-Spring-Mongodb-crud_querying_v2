@@ -33,8 +33,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private JwtUtil jwtUtil;
 
-    @Autowired
-    private AuthenticationService authenticationService;
+//    @Autowired
+//    private AuthenticationService authenticationService;
+    // In JwtAuthenticationFilter.java
+    private final AuthenticationService authenticationService;
+
+    public JwtAuthenticationFilter(AuthenticationService authenticationService) {
+        this.authenticationService = authenticationService;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, 
@@ -43,14 +49,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             // Get Authorization header
             String authHeader = request.getHeader(jwtUtil.getHeader());
-            
+
             String username = null;
             String token = null;
 
             // Extract token from header
             if (authHeader != null && authHeader.startsWith(jwtUtil.getPrefix())) {
                 token = jwtUtil.extractTokenFromHeader(authHeader);
-                
+
                 try {
                     username = jwtUtil.extractUsername(token);
                 } catch (Exception e) {
@@ -62,15 +68,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 try {
                     UserDetails userDetails = authenticationService.loadUserByUsername(username);
-                    
+
                     if (jwtUtil.validateToken(token, userDetails)) {
-                        UsernamePasswordAuthenticationToken authToken = 
+                        UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
                                 userDetails, null, userDetails.getAuthorities());
-                        
+
                         authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                         SecurityContextHolder.getContext().setAuthentication(authToken);
-                        
+
                         // Add user information to request attributes for easy access
                         request.setAttribute("currentUser", username);
                         request.setAttribute("jwtToken", token);
@@ -86,6 +92,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         filterChain.doFilter(request, response);
     }
+//    protected void doFilterInternal(HttpServletRequest request,
+//                                    HttpServletResponse response,
+//                                    FilterChain filterChain) throws ServletException, IOException {
+//        try {
+//            String token = authenticationService.resolveToken(request);
+//            if (token != null && authenticationService.validateToken(token)) {
+//                var authentication = authenticationService.getAuthentication(token);
+//                // Only set details if the authentication is UsernamePasswordAuthenticationToken
+//                if (authentication instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken) {
+//                    ((org.springframework.security.authentication.UsernamePasswordAuthenticationToken) authentication)
+//                            .setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+//                }
+//                SecurityContextHolder.getContext().setAuthentication(authentication);
+//            }
+//        } catch (Exception e) {
+//            logger.error("JWT authentication filter error: " + e.getMessage());
+//        }
+//
+//        filterChain.doFilter(request, response);
+//    }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {

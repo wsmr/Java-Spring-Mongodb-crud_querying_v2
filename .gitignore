@@ -1,0 +1,17 @@
+# Environments
+.env
+.venv/
+env/
+venv/
+
+# System Files
+*.DS_Store
+Thumbs.db
+.idea
+
+# Logs
+*.log
+target/
+
+# macOS system files
+*.DS_Store
