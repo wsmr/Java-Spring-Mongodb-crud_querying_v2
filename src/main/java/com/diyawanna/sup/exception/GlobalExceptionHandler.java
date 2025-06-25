@@ -1,5 +1,6 @@
 package com.diyawanna.sup.exception;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -8,6 +9,8 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,6 +23,8 @@ import java.util.Map;
  * - Appropriate HTTP status codes
  * - Validation error handling
  * - Custom exception handling
+ * - Conditional stack trace inclusion (development only)
+ * - Rate limiting support
  * 
  * @author Diyawanna Team
  * @version 1.0.0
@@ -27,12 +32,49 @@ import java.util.Map;
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
+    @Value("${app.include-stack-trace:false}")
+    private boolean includeStackTrace;
+
+    @Value("${app.environment:production}")
+    private String environment;
+
+    /**
+     * Create base error response with conditional stack trace
+     */
+    private Map<String, Object> createErrorResponse(String error, String message, HttpStatus status, 
+                                                   WebRequest request, Exception ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", error);
+        response.put("message", message);
+        response.put("timestamp", LocalDateTime.now());
+        response.put("status", status.value());
+        response.put("path", request.getDescription(false).replace("uri=", ""));
+        response.put("environment", environment);
+
+        // Include stack trace only in development environment
+        if (includeStackTrace && "development".equalsIgnoreCase(environment)) {
+            response.put("stackTrace", getStackTrace(ex));
+            response.put("exceptionType", ex.getClass().getSimpleName());
+        }
+
+        return response;
+    }
+
+    /**
+     * Get stack trace as string
+     */
+    private String getStackTrace(Exception ex) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        ex.printStackTrace(pw);
+        return sw.toString();
+    }
+
     /**
      * Handle validation errors
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<?> handleValidationExceptions(MethodArgumentNotValidException ex) {
-        Map<String, Object> response = new HashMap<>();
+    public ResponseEntity<?> handleValidationExceptions(MethodArgumentNotValidException ex, WebRequest request) {
         Map<String, String> errors = new HashMap<>();
         
         ex.getBindingResult().getAllErrors().forEach((error) -> {
@@ -41,28 +83,42 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
         
-        response.put("error", "Validation failed");
-        response.put("message", "Invalid input data");
+        Map<String, Object> response = createErrorResponse(
+            "Validation failed", 
+            "Invalid input data", 
+            HttpStatus.BAD_REQUEST, 
+            request, 
+            ex
+        );
         response.put("details", errors);
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.BAD_REQUEST.value());
         
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     /**
-     * Handle authentication exceptions
+     * Handle authentication exceptions with rate limiting support
      */
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<?> handleAuthenticationException(AuthenticationException ex, WebRequest request) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", "Authentication failed");
-        response.put("message", ex.getMessage());
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.UNAUTHORIZED.value());
-        response.put("path", request.getDescription(false));
+        HttpStatus status = HttpStatus.UNAUTHORIZED;
         
-        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+        Map<String, Object> response = createErrorResponse(
+            "Authentication failed", 
+            ex.getMessage(), 
+            status, 
+            request, 
+            ex
+        );
+
+        // Add rate limiting information if present
+        if (ex.getRetryAfter() != null && ex.getRetryAfter() > 0) {
+            response.put("retryAfter", ex.getRetryAfter());
+            response.put("error", "Too many authentication attempts");
+            status = HttpStatus.TOO_MANY_REQUESTS;
+            response.put("status", status.value());
+        }
+        
+        return new ResponseEntity<>(response, status);
     }
 
     /**
@@ -70,12 +126,13 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<?> handleUserNotFoundException(UserNotFoundException ex, WebRequest request) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", "User not found");
-        response.put("message", ex.getMessage());
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.NOT_FOUND.value());
-        response.put("path", request.getDescription(false));
+        Map<String, Object> response = createErrorResponse(
+            "User not found", 
+            ex.getMessage(), 
+            HttpStatus.NOT_FOUND, 
+            request, 
+            ex
+        );
         
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
@@ -85,12 +142,13 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<?> handleUserAlreadyExistsException(UserAlreadyExistsException ex, WebRequest request) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", "User already exists");
-        response.put("message", ex.getMessage());
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.CONFLICT.value());
-        response.put("path", request.getDescription(false));
+        Map<String, Object> response = createErrorResponse(
+            "User already exists", 
+            ex.getMessage(), 
+            HttpStatus.CONFLICT, 
+            request, 
+            ex
+        );
         
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
@@ -100,12 +158,13 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(UniversityNotFoundException.class)
     public ResponseEntity<?> handleUniversityNotFoundException(UniversityNotFoundException ex, WebRequest request) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", "University not found");
-        response.put("message", ex.getMessage());
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.NOT_FOUND.value());
-        response.put("path", request.getDescription(false));
+        Map<String, Object> response = createErrorResponse(
+            "University not found", 
+            ex.getMessage(), 
+            HttpStatus.NOT_FOUND, 
+            request, 
+            ex
+        );
         
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
@@ -115,12 +174,13 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(UniversityAlreadyExistsException.class)
     public ResponseEntity<?> handleUniversityAlreadyExistsException(UniversityAlreadyExistsException ex, WebRequest request) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", "University already exists");
-        response.put("message", ex.getMessage());
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.CONFLICT.value());
-        response.put("path", request.getDescription(false));
+        Map<String, Object> response = createErrorResponse(
+            "University already exists", 
+            ex.getMessage(), 
+            HttpStatus.CONFLICT, 
+            request, 
+            ex
+        );
         
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
@@ -130,12 +190,13 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(FacultyNotFoundException.class)
     public ResponseEntity<?> handleFacultyNotFoundException(FacultyNotFoundException ex, WebRequest request) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", "Faculty not found");
-        response.put("message", ex.getMessage());
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.NOT_FOUND.value());
-        response.put("path", request.getDescription(false));
+        Map<String, Object> response = createErrorResponse(
+            "Faculty not found", 
+            ex.getMessage(), 
+            HttpStatus.NOT_FOUND, 
+            request, 
+            ex
+        );
         
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
@@ -145,12 +206,13 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(CartNotFoundException.class)
     public ResponseEntity<?> handleCartNotFoundException(CartNotFoundException ex, WebRequest request) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", "Cart not found");
-        response.put("message", ex.getMessage());
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.NOT_FOUND.value());
-        response.put("path", request.getDescription(false));
+        Map<String, Object> response = createErrorResponse(
+            "Cart not found", 
+            ex.getMessage(), 
+            HttpStatus.NOT_FOUND, 
+            request, 
+            ex
+        );
         
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
@@ -160,12 +222,13 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(QueryNotFoundException.class)
     public ResponseEntity<?> handleQueryNotFoundException(QueryNotFoundException ex, WebRequest request) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", "Query not found");
-        response.put("message", ex.getMessage());
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.NOT_FOUND.value());
-        response.put("path", request.getDescription(false));
+        Map<String, Object> response = createErrorResponse(
+            "Query not found", 
+            ex.getMessage(), 
+            HttpStatus.NOT_FOUND, 
+            request, 
+            ex
+        );
         
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
@@ -175,12 +238,13 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(QueryAlreadyExistsException.class)
     public ResponseEntity<?> handleQueryAlreadyExistsException(QueryAlreadyExistsException ex, WebRequest request) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", "Query already exists");
-        response.put("message", ex.getMessage());
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.CONFLICT.value());
-        response.put("path", request.getDescription(false));
+        Map<String, Object> response = createErrorResponse(
+            "Query already exists", 
+            ex.getMessage(), 
+            HttpStatus.CONFLICT, 
+            request, 
+            ex
+        );
         
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
@@ -190,12 +254,13 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<?> handleIllegalArgumentException(IllegalArgumentException ex, WebRequest request) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", "Invalid argument");
-        response.put("message", ex.getMessage());
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.BAD_REQUEST.value());
-        response.put("path", request.getDescription(false));
+        Map<String, Object> response = createErrorResponse(
+            "Invalid argument", 
+            ex.getMessage(), 
+            HttpStatus.BAD_REQUEST, 
+            request, 
+            ex
+        );
         
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
@@ -205,12 +270,13 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<?> handleRuntimeException(RuntimeException ex, WebRequest request) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", "Runtime error");
-        response.put("message", ex.getMessage());
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
-        response.put("path", request.getDescription(false));
+        Map<String, Object> response = createErrorResponse(
+            "Runtime error", 
+            ex.getMessage(), 
+            HttpStatus.INTERNAL_SERVER_ERROR, 
+            request, 
+            ex
+        );
         
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -220,14 +286,15 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleGlobalException(Exception ex, WebRequest request) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", "Internal server error");
-        response.put("message", "An unexpected error occurred");
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
-        response.put("path", request.getDescription(false));
+        Map<String, Object> response = createErrorResponse(
+            "Internal server error", 
+            "An unexpected error occurred", 
+            HttpStatus.INTERNAL_SERVER_ERROR, 
+            request, 
+            ex
+        );
         
-        // Log the full exception for debugging
+        // Always log the full exception for debugging (server-side only)
         ex.printStackTrace();
         
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);

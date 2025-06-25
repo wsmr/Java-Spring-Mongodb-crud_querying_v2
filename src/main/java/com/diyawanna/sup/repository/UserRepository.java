@@ -1,6 +1,8 @@
 package com.diyawanna.sup.repository;
 
 import com.diyawanna.sup.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -15,6 +17,7 @@ import java.util.List;
  * - Basic CRUD operations
  * - Custom query methods for user management
  * - Authentication-related queries
+ * - Pagination support
  * 
  * @author Diyawanna Team
  * @version 1.0.0
@@ -48,9 +51,19 @@ public interface UserRepository extends MongoRepository<User, String> {
     List<User> findByActiveTrue();
 
     /**
+     * Find all active users with pagination
+     */
+    Page<User> findByActiveTrue(Pageable pageable);
+
+    /**
      * Find users by university
      */
     List<User> findByUniversityAndActiveTrue(String university);
+
+    /**
+     * Find users by university with pagination
+     */
+    Page<User> findByUniversityAndActiveTrue(String university, Pageable pageable);
 
     /**
      * Find users by age range
@@ -88,5 +101,10 @@ public interface UserRepository extends MongoRepository<User, String> {
      * Count users by university
      */
     long countByUniversityAndActiveTrue(String university);
+
+    /**
+     * Count all users (including inactive)
+     */
+    long count();
 }
 

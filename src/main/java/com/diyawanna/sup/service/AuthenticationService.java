@@ -30,6 +30,7 @@ import java.util.Optional;
  * - JWT token generation and validation
  * - User registration
  * - UserDetailsService implementation for Spring Security
+ * - Authentication attempt rate limiting
  * 
  * @author Diyawanna Team
  * @version 1.0.0
@@ -47,15 +48,27 @@ public class AuthenticationService implements UserDetailsService {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private AuthenticationAttemptService attemptService;
+
     /**
      * Authenticate user and generate JWT token
      */
     public LoginResponse authenticate(LoginRequest loginRequest) {
+        String username = loginRequest.getUsername();
+        
         try {
+            // Check if user is currently blocked due to too many failed attempts
+            if (attemptService.isBlocked(username)) {
+                long retryAfter = attemptService.getRemainingLockoutTime(username);
+                throw new AuthenticationException("Too many authentication attempts, please try again later", retryAfter);
+            }
+
             // Find user by username
-            Optional<User> userOptional = userRepository.findByUsername(loginRequest.getUsername());
+            Optional<User> userOptional = userRepository.findByUsername(username);
 
             if (userOptional.isEmpty()) {
+                attemptService.recordFailedAttempt(username);
                 throw new AuthenticationException("Invalid username or password");
             }
 
@@ -63,13 +76,18 @@ public class AuthenticationService implements UserDetailsService {
 
             // Check if user is active
             if (!user.isActive()) {
+                attemptService.recordFailedAttempt(username);
                 throw new AuthenticationException("User account is deactivated");
             }
 
             // Verify password
             if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
+                attemptService.recordFailedAttempt(username);
                 throw new AuthenticationException("Invalid username or password");
             }
+
+            // Authentication successful - clear any failed attempts
+            attemptService.recordSuccessfulAttempt(username);
 
             // Create UserDetails for JWT generation
             UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
@@ -101,6 +119,7 @@ public class AuthenticationService implements UserDetailsService {
         } catch (AuthenticationException e) {
             throw e;
         } catch (Exception e) {
+            attemptService.recordFailedAttempt(username);
             throw new AuthenticationException("Authentication failed: " + e.getMessage());
         }
     }

@@ -48,6 +48,27 @@ public class UserService {
     }
 
     /**
+     * Get all users (including inactive)
+     */
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    /**
+     * Get all users with pagination
+     */
+    public Page<User> getAllUsers(Pageable pageable) {
+        return userRepository.findAll(pageable);
+    }
+
+    /**
+     * Get all active users with pagination
+     */
+    public Page<User> getAllActiveUsers(Pageable pageable) {
+        return userRepository.findByActiveTrue(pageable);
+    }
+
+    /**
      * Get user by ID
      */
     @Cacheable(value = "users", key = "#id")
@@ -159,7 +180,7 @@ public class UserService {
     /**
      * Delete user (soft delete)
      */
-    @CacheEvict(value = "users", key = "#id")
+    @CacheEvict(value = "users", allEntries = true)
     public void deleteUser(String id) {
         User user = getUserById(id);
         user.setActive(false);
@@ -251,7 +272,7 @@ public class UserService {
     /**
      * Activate user
      */
-    @CachePut(value = "users", key = "#id")
+    @CacheEvict(value = "users", allEntries = true)
     public User activateUser(String id) {
         User user = getUserById(id);
         user.setActive(true);
@@ -262,7 +283,7 @@ public class UserService {
     /**
      * Deactivate user
      */
-    @CachePut(value = "users", key = "#id")
+    @CacheEvict(value = "users", allEntries = true)
     public User deactivateUser(String id) {
         User user = getUserById(id);
         user.setActive(false);
